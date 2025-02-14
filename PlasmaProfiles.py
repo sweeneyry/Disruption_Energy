@@ -70,10 +70,11 @@ class PlasmaProfiles:
         # in the below expression only we have incorporated the 1/r already. 
         Btheta0r[0:self.indrq2] = prefactor * self.r[0:self.indrq2] / 2.0
         Btheta0r[self.indrq2:self.inda] = prefactor * (self.rq2**2 / 2.0 + 
-                                           (1.0 + self.rq2 / (self.a - self.rq2)) * (self.r[self.indrq2:self.inda] - self.rq2)
-                                            -(self.r[self.indrq2:self.inda]**2 - self.rq2**2) / (2.0 * (self.a - self.rq2)))
-        Btheta0r[self.inda:] = prefactor * (self.rq2**2 / 2.0 + self.a 
-                                         -(self.a**2 - self.rq2**2) / (2.0 * (self.a - self.rq2)))
+                                           (1.0 + self.rq2 / (self.a - self.rq2)) * (self.r[self.indrq2:self.inda]**2 - self.rq2**2) / 2.0
+                                            -(self.r[self.indrq2:self.inda]**3 - self.rq2**3) / (3.0 * (self.a - self.rq2)))
+        Btheta0r[self.inda:] = prefactor * (self.rq2**2 / 2.0 + 
+                                            (1.0 + self.rq2 / (self.a - self.rq2)) * (self.a**2 - self.rq2**2) / 2.0
+                                            -(self.a**3 - self.rq2**3) / (3.0 * (self.a - self.rq2)))
         # now we account for the 1/r for the rest of the domain
         Btheta0r[self.indrq2:] = Btheta0r[self.indrq2:] / self.r[self.indrq2:]
 
