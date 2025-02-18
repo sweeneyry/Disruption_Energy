@@ -10,6 +10,7 @@ class PlasmaProfiles:
         self.a = MinorRadius
         self.b = RadiusVessel
         self.R = MajorRadius
+        self.rREMC = self.b - 0.08
         self.L = 2.0 * np.pi * self.R
         self.p0 = Pressure0
         self.Jz0 = Jz0
@@ -17,6 +18,7 @@ class PlasmaProfiles:
         self.dr = self.r[1] - self.r[0]
         self.indrq2 = np.argmin(np.abs(self.r - self.rq2))
         self.inda = np.argmin(np.abs(self.r - self.a))
+        self.indREMC = np.argmin(np.abs(self.r - self.rREMC))        
         self.indb = -1
         self.mu0 = np.pi * 4e-7
         self.BzVac = BzVac
@@ -37,36 +39,31 @@ class PlasmaProfiles:
         self.Wmagp = self.total_Poloidal_Magnetic_Energy()
         self.Wmagt = self.total_Toroidal_Magnetic_Energy()
         self.phit = self.toroidal_Flux()
+        self.psiInVessel = self.poloidal_Flux_In_Vessel()
+        self.psiInPlasma = self.poloidal_Flux_In_Plasma()
+        self.psiInREMC = self.poloidal_Flux_In_REMC()
         self.Wth = self.thermal_Energy()
 
     def pressure_Profile(self):
-
         pr = np.zeros(np.shape(self.r))
         pr[0:self.indrq2] = self.p0
         pr[self.indrq2:self.inda] = self.p0 * (1.0 - (self.r[self.indrq2:self.inda] - self.rq2) / 
-                                               (self.a - self.rq2))
-        
+                                               (self.a - self.rq2))    
         return pr
     
     def grad_p_Profile(self):
-
         gradpr = np.zeros(np.shape(self.r))
         gradpr[self.indrq2:self.inda] = -self.p0 / (self.a - self.rq2)
-
         return gradpr
     
     def Jz0_Profile(self):
-
         Jzr = np.zeros(np.shape(self.r))
         Jzr[0:self.indrq2] = self.Jz0
         Jzr[self.indrq2:self.inda] = self.Jz0 * (1.0 - (self.r[self.indrq2:self.inda] - self.rq2) / 
                                                (self.a - self.rq2))
-        
         return Jzr
     
     def Btheta0_Profile(self):
-
-
         Btheta0r = np.zeros(np.shape(self.r))
         prefactor = self.mu0 * self.Jz0
         # in the below expression only we have incorporated the 1/r already. 
@@ -79,73 +76,73 @@ class PlasmaProfiles:
                                             -(self.a**3 - self.rq2**3) / (3.0 * (self.a - self.rq2)))
         # now we account for the 1/r for the rest of the domain
         Btheta0r[self.indrq2:] = Btheta0r[self.indrq2:] / self.r[self.indrq2:]
-
         return Btheta0r
     
     def Jtheta_Profile(self):
-
         Jthetar = self.Jz0r * self.Btheta0r / self.BzVac
-
         return Jthetar
 
     def jz_Profile(self):
-
         jzr = -self.gradpr0 * (self.Btheta0r / (self.BzVac**2 - self.Btheta0r**2))
-
         return jzr
     
     def jtheta_Profile(self):
-
         jthetar = self.gradpr0 * (self.BzVac / (self.BzVac**2 - self.Btheta0r**2))
-
         return jthetar
     
 
     def Bz_Profile(self):
-
         Bzr = np.zeros(np.shape(self.r)) + self.BzVac 
         deltaBzr = np.flip( self.mu0 * np.cumsum( np.flip((self.Jtheta0r[0:self.inda] 
                                                   + self.jthetar0[0:self.inda]) * self.dr )) )
         Bzr[0:self.inda] = Bzr[0:self.inda] + deltaBzr
-        
         return deltaBzr, Bzr
     
     def q_Profile(self):
-
         qr = self.r * self.Bzr0 / (self.R * self.Btheta0r)
-
         return qr
     
     def total_Current(self):
-
         Ip = 2 * np.pi * np.sum( (self.Jz0r + self.jzr0) * self.r * self.dr)
-
         return Ip
     
     def total_Poloidal_Magnetic_Energy(self):
-
         Wmagp = 2.0 * np.pi * self.L * np.sum( self.Btheta0r**2 / (2.0 * self.mu0) * self.r * self.dr)
-
         return Wmagp
     
     def total_Toroidal_Magnetic_Energy(self):
-
         Wmagt = 2.0 * np.pi * self.L * np.sum( self.Bzr0**2 / (2.0 * self.mu0) * self.r * self.dr)
-
         return Wmagt
     
     def toroidal_Flux(self):
-
         phit = 2.0 * np.pi * np.sum( self.Bzr0 * self.r * self.dr)
-
         return phit
     
+    def poloidal_Flux_In_Vessel(self):
+        '''
+        Here we calculate the polodial flux between the magnetic axis and the vessel wall
+        '''
+        psi = self.L * np.sum(self.Btheta0r * self.dr)
+        return psi
+    
+    def poloidal_Flux_In_Plasma(self):
+        '''
+        Here we calculate the polodial flux between the magnetic axis and the plasma separatrix
+        '''
+        psi = self.L * np.sum(self.Btheta0r[0:self.inda] * self.dr)
+        return psi    
+    
+    def poloidal_Flux_In_REMC(self):
+        '''
+        Here we calculate the polodial flux between the REMC and the vessel
+        '''
+        psi = self.L * np.sum(self.Btheta0r[self.indREMC:] * self.dr)
+        return psi      
+    
     def thermal_Energy(self):
-
         Wth = 2.0 * np.pi * self.L * self.p0 * (self.rq2**2 / 2.0 + 
                                             (1.0 + self.rq2 / (self.a - self.rq2)) * (self.a**2 - self.rq2**2) / 2.0
                                             -(self.a**3 - self.rq2**3) / (3.0 * (self.a - self.rq2)))
-        
         return Wth
     
     def plot_Profiles(self):
@@ -183,7 +180,10 @@ class PlasmaProfiles:
 
         ax7.plot(self.r, self.Btheta0r)
         ax7.set_ylabel(r'$B_{\theta}$')
-        ax7.set_title(str(np.round(self.Wmagp/1e6, decimals=1)) +  ' MJ')
+        ax7.set_title(str(np.round(self.Wmagp/1e6, decimals=1)) +  ' MJ, ' + 
+                      '$\psi_{v}=$' + str(np.round(self.psiInVessel, decimals=2)) +  ' Wb, '
+                      '$\psi_{p}=$' + str(np.round(self.psiInPlasma, decimals=2)) +  ' Wb, '
+                      '$\psi_{r}=$' + str(np.round(self.psiInREMC, decimals=2)) +  ' Wb')
 
         ax8.plot(self.r, self.Bzr0)
 #        ax8.plot(self.r[0:self.inda], self.deltaBzr0)

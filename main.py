@@ -11,8 +11,8 @@ profPreTQ = PlasmaProfiles(0.35, 0.41, 1.85, 0.7, 2.5e6, 9.87e6, 12.2)
 profPreTQ.plot_Profiles()
 
 
-#profIpSpike = PlasmaProfiles(0.57, 0.58, 0.7, 0.3, 0.0, 4.78e6, 12.104) # 10% Ip spike
-profIpSpike = PlasmaProfiles(0.57, 0.58, 1.85, 0.7, 0.0, 5.29e6, 12.085)
+profIpSpike = PlasmaProfiles(0.57, 0.58, 1.85, 0.7, 0.0, 4.85e6, 12.104) # 10% Ip spike
+#profIpSpike = PlasmaProfiles(0.57, 0.58, 1.85, 0.7, 0.0, 5.29e6, 12.085)
 profIpSpike.plot_Profiles()
 
 
