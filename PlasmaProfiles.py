@@ -4,17 +4,16 @@ import pdb
 
 class PlasmaProfiles:
 
-    def __init__(self, Radiusq2, RadiusPlasma, RadiusVessel, AspectRatio, Pressure0, Jz0, BzVac):
+    def __init__(self, Radiusq2, MinorRadius, MajorRadius, RadiusVessel, Pressure0, Jz0, BzVac):
         self.dummy=1. 
         self.rq2 = Radiusq2
-        self.a = RadiusPlasma
+        self.a = MinorRadius
         self.b = RadiusVessel
-        self.epsilon = AspectRatio
-        self.R = self.a/self.epsilon
+        self.R = MajorRadius
         self.L = 2.0 * np.pi * self.R
         self.p0 = Pressure0
         self.Jz0 = Jz0
-        self.r = np.linspace(0, self.b, num=10000)
+        self.r = np.linspace(0, self.b, num=50000)
         self.dr = self.r[1] - self.r[0]
         self.indrq2 = np.argmin(np.abs(self.r - self.rq2))
         self.inda = np.argmin(np.abs(self.r - self.a))
@@ -31,11 +30,14 @@ class PlasmaProfiles:
         self.jzr0 = self.jz_Profile()
         self.jthetar0 = self.jtheta_Profile()
         self.deltaBzr0, self.Bzr0 = self.Bz_Profile()
+        self.q = self.q_Profile()
 
         # get scalars
         self.Ip = self.total_Current()
         self.Wmagp = self.total_Poloidal_Magnetic_Energy()
         self.Wmagt = self.total_Toroidal_Magnetic_Energy()
+        self.phit = self.toroidal_Flux()
+        self.Wth = self.thermal_Energy()
 
     def pressure_Profile(self):
 
@@ -108,9 +110,15 @@ class PlasmaProfiles:
         
         return deltaBzr, Bzr
     
+    def q_Profile(self):
+
+        qr = self.r * self.Bzr0 / (self.R * self.Btheta0r)
+
+        return qr
+    
     def total_Current(self):
 
-        Ip = 2 * np.pi * np.sum(self.Jz0r * self.r * self.dr)
+        Ip = 2 * np.pi * np.sum( (self.Jz0r + self.jzr0) * self.r * self.dr)
 
         return Ip
     
@@ -126,20 +134,36 @@ class PlasmaProfiles:
 
         return Wmagt
     
+    def toroidal_Flux(self):
+
+        phit = 2.0 * np.pi * np.sum( self.Bzr0 * self.r * self.dr)
+
+        return phit
+    
+    def thermal_Energy(self):
+
+        Wth = 2.0 * np.pi * self.L * self.p0 * (self.rq2**2 / 2.0 + 
+                                            (1.0 + self.rq2 / (self.a - self.rq2)) * (self.a**2 - self.rq2**2) / 2.0
+                                            -(self.a**3 - self.rq2**3) / (3.0 * (self.a - self.rq2)))
+        
+        return Wth
+    
     def plot_Profiles(self):
 
-        fig = plt.figure()
-        ax1 = plt.subplot(4,2,1)
-        ax2 = plt.subplot(4,2,2)
-        ax3 = plt.subplot(4,2,3)
-        ax4 = plt.subplot(4,2,4)
-        ax5 = plt.subplot(4,2,5)
-        ax6 = plt.subplot(4,2,6)
-        ax7 = plt.subplot(4,2,7)
-        ax8 = plt.subplot(4,2,8)
+        fig = plt.figure(figsize=(8, 8))
+        ax1 = plt.subplot(5,2,1)
+        ax2 = plt.subplot(5,2,2)
+        ax3 = plt.subplot(5,2,3)
+        ax4 = plt.subplot(5,2,4)
+        ax5 = plt.subplot(5,2,5)
+        ax6 = plt.subplot(5,2,6)
+        ax7 = plt.subplot(5,2,7)
+        ax8 = plt.subplot(5,2,8)
+        ax9 = plt.subplot(5,2,9)
 
         ax1.plot(self.r, self.pr0/1e3)
         ax1.set_ylabel('Pressure (kPa)')
+        ax1.set_title(str(np.round(self.Wth/1e6, decimals=2)) +  ' MJ')
 
         ax2.plot(self.r, self.gradpr0)
         ax2.set_ylabel(r'$\nabla p$')
@@ -164,7 +188,12 @@ class PlasmaProfiles:
         ax8.plot(self.r, self.Bzr0)
 #        ax8.plot(self.r[0:self.inda], self.deltaBzr0)
         ax8.set_ylabel('$B_z$ (T)')
-        ax8.set_title(str(np.round(self.Wmagt/1e6, decimals=1)) +  ' MJ')
+        ax8.set_title(str(np.round(self.Wmagt/1e6, decimals=1)) +  ' MJ, ' + 
+                      str(np.round(self.phit, decimals=2)) + ' Wb')
+        
+        ax9.plot(self.r, self.q)
+        ax9.set_ylabel('$q$')
+        ax9.set_ylim([0,None])
 
         plt.tight_layout()
         plt.show()
